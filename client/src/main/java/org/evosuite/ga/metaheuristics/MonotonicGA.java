@@ -19,6 +19,8 @@
  */
 package org.evosuite.ga.metaheuristics;
 
+import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -31,6 +33,7 @@ import org.evosuite.ga.FitnessFunction;
 import org.evosuite.ga.FitnessReplacementFunction;
 import org.evosuite.ga.ReplacementFunction;
 import org.evosuite.ga.localsearch.LocalSearchBudget;
+import org.evosuite.utils.LoggingUtils;
 import org.evosuite.utils.Randomness;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -225,6 +228,9 @@ public class MonotonicGA<T extends Chromosome> extends GeneticAlgorithm<T> {
 		}
 
 		logger.debug("Starting evolution");
+		Instant startTime = Instant.now();
+		LoggingUtils.getEvoLogger().info("\nStart Time: " + startTime.toString());
+
 		int starvationCounter = 0;
 		double bestFitness = Double.MAX_VALUE;
 		double lastBestFitness = Double.MAX_VALUE;
@@ -310,6 +316,13 @@ public class MonotonicGA<T extends Chromosome> extends GeneticAlgorithm<T> {
 			logger.info("Best individual has fitness: " + population.get(0).getFitness());
 			logger.info("Worst individual has fitness: " + population.get(population.size() - 1).getFitness());
 
+			LoggingUtils.getEvoLogger().info("\nCurrent iteration: " + currentIteration);
+			LoggingUtils.getEvoLogger().info("Population size: " + population.size());
+			LoggingUtils.getEvoLogger().info("Best individual has fitness: " + population.get(0).getFitness());
+			LoggingUtils.getEvoLogger().info("Worst individual has fitness: " + population.get(population.size() - 1).getFitness());
+			Long durationInSeconds = Duration.between(startTime, Instant.now()).getSeconds();
+			LoggingUtils.getEvoLogger().info("Elapsed Time: " + String.format("%d:%02d:%02d",
+					durationInSeconds / 3600, (durationInSeconds % 3600) / 60, durationInSeconds % 60));
 		}
 		// archive
 		TimeController.execute(this::updateBestIndividualFromArchive, "update from archive", 5_000);
