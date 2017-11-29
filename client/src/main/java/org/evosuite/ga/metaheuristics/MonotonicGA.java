@@ -316,9 +316,13 @@ public class MonotonicGA<T extends Chromosome> extends GeneticAlgorithm<T> {
 			logger.info("Best individual has fitness: " + population.get(0).getFitness());
 			logger.info("Worst individual has fitness: " + population.get(population.size() - 1).getFitness());
 
-			Long durationInSeconds = Duration.between(startTime, Instant.now()).getSeconds();
-			LoggingUtils.getEvoLogger().info(String.format(" [Elapsed Time: %d:%02d:%02d]",
-					durationInSeconds / 3600, (durationInSeconds % 3600) / 60, durationInSeconds % 60));
+			Duration duration = Duration.between(startTime, Instant.now());
+			Long durationInSeconds = duration.getSeconds();
+			double coverage = getBestIndividual().getCoverage() * 100;
+			LoggingUtils.getEvoLogger().info(String.format("[Coverage: %.2f%%]", coverage));
+			LoggingUtils.getEvoLogger().info(String.format(" [Elapsed Time: %d:%02d:%02d | %d mS]",
+					durationInSeconds / 3600, (durationInSeconds % 3600) / 60, durationInSeconds % 60,
+					duration.toMillis()));
 		}
 		// archive
 		TimeController.execute(this::updateBestIndividualFromArchive, "update from archive", 5_000);

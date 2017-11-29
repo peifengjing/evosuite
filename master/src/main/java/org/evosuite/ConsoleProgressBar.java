@@ -26,6 +26,7 @@ import org.evosuite.rmi.MasterServices;
 import org.evosuite.rmi.service.ClientState;
 import org.evosuite.rmi.service.ClientStateInformation;
 import org.evosuite.utils.Listener;
+import org.evosuite.utils.LoggingUtils;
 
 /**
  * <p>
@@ -85,7 +86,6 @@ public class ConsoleProgressBar implements Listener<ClientStateInformation>{
 		bar.append(coverage + "%]");
 
 		System.out.print("\r" + bar.toString());
-		
 	}
 
 }
