@@ -319,9 +319,9 @@ public class MonotonicGA<T extends Chromosome> extends GeneticAlgorithm<T> {
 			Duration duration = Duration.between(startTime, Instant.now());
 			Long durationInSeconds = duration.getSeconds();
 			double coverage = getBestIndividual().getCoverage() * 100;
-			LoggingUtils.getEvoLogger().info(String.format("[Coverage: %.2f%%]", coverage));
-			LoggingUtils.getEvoLogger().info(String.format(" [Elapsed Time: %d:%02d:%02d | %d mS]",
-					durationInSeconds / 3600, (durationInSeconds % 3600) / 60, durationInSeconds % 60,
+			LoggingUtils.getEvoLogger().info(String.format("[CS527 Peifeng] [Coverage: %.2f%%] [Elapsed "
+							+ "Time: %d:%02d:%02d | %d mS]",
+					coverage, durationInSeconds / 3600, (durationInSeconds % 3600) / 60, durationInSeconds % 60,
 					duration.toMillis()));
 		}
 		// archive
