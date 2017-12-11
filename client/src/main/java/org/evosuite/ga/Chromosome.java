@@ -36,7 +36,7 @@ import org.slf4j.LoggerFactory;
 public abstract class Chromosome implements Comparable<Chromosome>, Serializable,
 		PublicCloneable<Chromosome> {
 
-	private static final long serialVersionUID = -6921897301005213358L;
+	public static final long serialVersionUID = -6921897301005213358L;
 
 	/** Constant <code>logger</code> */
 	private static final Logger logger = LoggerFactory.getLogger(Chromosome.class);

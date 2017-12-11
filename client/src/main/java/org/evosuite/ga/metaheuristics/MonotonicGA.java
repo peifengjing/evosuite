@@ -19,11 +19,24 @@
  */
 package org.evosuite.ga.metaheuristics;
 
+import com.sun.javafx.util.Logging;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.lang.reflect.Array;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 
+import java.util.stream.Collector;
+import java.util.stream.Collectors;
 import org.evosuite.Properties;
 import org.evosuite.TimeController;
 import org.evosuite.ga.Chromosome;
@@ -33,6 +46,12 @@ import org.evosuite.ga.FitnessFunction;
 import org.evosuite.ga.FitnessReplacementFunction;
 import org.evosuite.ga.ReplacementFunction;
 import org.evosuite.ga.localsearch.LocalSearchBudget;
+import org.evosuite.ga.stoppingconditions.MaxTimeStoppingCondition;
+import org.evosuite.ga.stoppingconditions.StoppingCondition;
+import org.evosuite.testcase.TestChromosome;
+import org.evosuite.testsuite.TestSuiteChromosome;
+import org.evosuite.testsuite.TestSuiteSerialization;
+import org.evosuite.utils.DebuggingObjectOutputStream;
 import org.evosuite.utils.LoggingUtils;
 import org.evosuite.utils.Randomness;
 import org.slf4j.Logger;
@@ -50,6 +69,11 @@ public class MonotonicGA<T extends Chromosome> extends GeneticAlgorithm<T> {
 	protected ReplacementFunction replacementFunction;
 
 	private final Logger logger = LoggerFactory.getLogger(MonotonicGA.class);
+
+	/* UIUC CS527 export path */
+	String targetFolder = ".evosuite-custom/";
+	String targetPrefix = "population-";
+	String targetSuffix = ".txt";
 
 	/**
 	 * Constructor
@@ -101,17 +125,18 @@ public class MonotonicGA<T extends Chromosome> extends GeneticAlgorithm<T> {
 
 			T parent1 = selectionFunction.select(population);
 			T parent2;
-			if (Properties.HEADLESS_CHICKEN_TEST)
+			if (Properties.HEADLESS_CHICKEN_TEST) {
 				parent2 = newRandomIndividual(); // crossover with new random
-													// individual
-			else
+				// individual
+			}
+			else {
 				parent2 = selectionFunction.select(population); // crossover
-																// with existing
-																// individual
+				// with existing
+				// individual
+			}
 
 			T offspring1 = (T) parent1.clone();
 			T offspring2 = (T) parent2.clone();
-
 			try {
 				// Crossover
 				if (Randomness.nextDouble() <= Properties.CROSSOVER_RATE) {
@@ -168,9 +193,9 @@ public class MonotonicGA<T extends Chromosome> extends GeneticAlgorithm<T> {
 					newGeneration.add(offspring2);
 				}
 
-				if (rejected == 1)
+				if (rejected == 1) {
 					newGeneration.add(Randomness.choice(parent1, parent2));
-				else if (rejected == 2) {
+				} else if (rejected == 2) {
 					newGeneration.add(parent1);
 					newGeneration.add(parent2);
 				}
@@ -204,9 +229,19 @@ public class MonotonicGA<T extends Chromosome> extends GeneticAlgorithm<T> {
 		currentIteration = 0;
 
 		// Set up initial population
-		generateInitialPopulation(Properties.POPULATION);
-		logger.debug("Calculating fitness of initial population");
-		calculateFitnessAndSortPopulation();
+		String targetFile = Properties.TARGET_CLASS;
+		File target = new File(targetFolder + targetPrefix + targetFile + targetSuffix);
+		if (!target.exists()) {
+			generateInitialPopulation(Properties.POPULATION);
+			logger.debug("Calculating fitness of initial population");
+			calculateFitnessAndSortPopulation();
+		} else {
+			readPopulationFromFile(target);
+			if (population.isEmpty()) {
+				generateInitialPopulation(Properties.POPULATION);
+			}
+			Collections.sort(population);
+		}
 
 		this.notifyIteration();
 	}
@@ -238,10 +273,12 @@ public class MonotonicGA<T extends Chromosome> extends GeneticAlgorithm<T> {
 			bestFitness = 0.0;
 			lastBestFitness = 0.0;
 		}
+		// UIUC CS527, save last population in case the last iteration will terminate without reach
+		// the best population
+		List<T> lastPopulation = new ArrayList<>();
 
 		while (!isFinished()) {
-			
-			logger.info("Population size before: " + population.size());
+
 			// related to Properties.ENABLE_SECONDARY_OBJECTIVE_AFTER;
 			// check the budget progress and activate a secondary criterion
 			// according to the property value.
@@ -252,14 +289,17 @@ public class MonotonicGA<T extends Chromosome> extends GeneticAlgorithm<T> {
 				sortPopulation();
 				double bestFitnessAfterEvolution = getBestFitness();
 
-				if (getFitnessFunction().isMaximizationFunction())
-					assert(bestFitnessAfterEvolution >= (bestFitnessBeforeEvolution
-							- DELTA)) : "best fitness before evolve()/sortPopulation() was: " + bestFitnessBeforeEvolution
+				if (getFitnessFunction().isMaximizationFunction()) {
+					assert (bestFitnessAfterEvolution >= (bestFitnessBeforeEvolution
+							- DELTA)) :
+							"best fitness before evolve()/sortPopulation() was: " + bestFitnessBeforeEvolution
 									+ ", now best fitness is " + bestFitnessAfterEvolution;
-				else
-					assert(bestFitnessAfterEvolution <= (bestFitnessBeforeEvolution
-							+ DELTA)) : "best fitness before evolve()/sortPopulation() was: " + bestFitnessBeforeEvolution
+				} else {
+					assert (bestFitnessAfterEvolution <= (bestFitnessBeforeEvolution
+							+ DELTA)) :
+							"best fitness before evolve()/sortPopulation() was: " + bestFitnessBeforeEvolution
 									+ ", now best fitness is " + bestFitnessAfterEvolution;
+				}
 			}
 
 			{
@@ -267,14 +307,17 @@ public class MonotonicGA<T extends Chromosome> extends GeneticAlgorithm<T> {
 				applyLocalSearch();
 				double bestFitnessAfterLocalSearch = getBestFitness();
 
-				if (getFitnessFunction().isMaximizationFunction())
-					assert(bestFitnessAfterLocalSearch >= (bestFitnessBeforeLocalSearch
-							- DELTA)) : "best fitness before applyLocalSearch() was: " + bestFitnessBeforeLocalSearch
+				if (getFitnessFunction().isMaximizationFunction()) {
+					assert (bestFitnessAfterLocalSearch >= (bestFitnessBeforeLocalSearch
+							- DELTA)) :
+							"best fitness before applyLocalSearch() was: " + bestFitnessBeforeLocalSearch
 									+ ", now best fitness is " + bestFitnessAfterLocalSearch;
-				else
-					assert(bestFitnessAfterLocalSearch <= (bestFitnessBeforeLocalSearch
-							+ DELTA)) : "best fitness before applyLocalSearch() was: " + bestFitnessBeforeLocalSearch
+				} else {
+					assert (bestFitnessAfterLocalSearch <= (bestFitnessBeforeLocalSearch
+							+ DELTA)) :
+							"best fitness before applyLocalSearch() was: " + bestFitnessBeforeLocalSearch
 									+ ", now best fitness is " + bestFitnessAfterLocalSearch;
+				}
 			}
 
 			/*
@@ -290,12 +333,13 @@ public class MonotonicGA<T extends Chromosome> extends GeneticAlgorithm<T> {
 
 			double newFitness = getBestFitness();
 
-			if (getFitnessFunction().isMaximizationFunction())
-				assert(newFitness >= (bestFitness - DELTA)) : "best fitness was: " + bestFitness
+			if (getFitnessFunction().isMaximizationFunction()) {
+				assert (newFitness >= (bestFitness - DELTA)) : "best fitness was: " + bestFitness
 						+ ", now best fitness is " + newFitness;
-			else
-				assert(newFitness <= (bestFitness + DELTA)) : "best fitness was: " + bestFitness
+			} else {
+				assert (newFitness <= (bestFitness + DELTA)) : "best fitness was: " + bestFitness
 						+ ", now best fitness is " + newFitness;
+			}
 			bestFitness = newFitness;
 
 			if (Double.compare(bestFitness, lastBestFitness) == 0) {
@@ -304,7 +348,6 @@ public class MonotonicGA<T extends Chromosome> extends GeneticAlgorithm<T> {
 				logger.info("reset starvationCounter after " + starvationCounter + " iterations");
 				starvationCounter = 0;
 				lastBestFitness = bestFitness;
-
 			}
 
 			updateSecondaryCriterion(starvationCounter);
@@ -316,6 +359,7 @@ public class MonotonicGA<T extends Chromosome> extends GeneticAlgorithm<T> {
 			logger.info("Best individual has fitness: " + population.get(0).getFitness());
 			logger.info("Worst individual has fitness: " + population.get(population.size() - 1).getFitness());
 
+			/* UIUC CS527 Autumn 2017 Peifeng: Export Elapsed Time */
 			Duration duration = Duration.between(startTime, Instant.now());
 			Long durationInSeconds = duration.getSeconds();
 			double coverage = getBestIndividual().getCoverage() * 100;
@@ -323,7 +367,23 @@ public class MonotonicGA<T extends Chromosome> extends GeneticAlgorithm<T> {
 							+ "Time: %d:%02d:%02d | %d mS]",
 					coverage, durationInSeconds / 3600, (durationInSeconds % 3600) / 60, durationInSeconds % 60,
 					duration.toMillis()));
+
+			// UIUC CS527, save current population in case the final population will be terminated
+			// before reach the best population
+			if (!isFinished()) {
+				lastPopulation = new ArrayList<>(population);
+			}
 		}
+
+		// UIUC CS527: write to target file
+		File parent = new File(targetFolder);
+		if (!parent.exists()) {
+			parent.mkdirs();
+		}
+		String targetFile = Properties.TARGET_CLASS;
+		File target = new File(targetFolder + targetPrefix + targetFile + targetSuffix);
+		writePopulationToFile(target, lastPopulation);
+
 		// archive
 		TimeController.execute(this::updateBestIndividualFromArchive, "update from archive", 5_000);
 
@@ -361,4 +421,51 @@ public class MonotonicGA<T extends Chromosome> extends GeneticAlgorithm<T> {
 		return replacementFunction;
 	}
 
+
+	/* UIUC CS527 Autumn 2017 Peifeng: Export List<T> population to File */
+	// Export population right after evolution
+	public void writePopulationToFile(File target, List<T> populationToWrite) {
+		LoggingUtils.getEvoLogger().info(String.format("[CS527 Peifeng] Saving best population to %s,"
+						+ " population size: %d", target.getAbsolutePath(), populationToWrite.size()));
+		showCoverage(populationToWrite);
+		try {
+			ObjectOutputStream out = new ObjectOutputStream(new FileOutputStream(target));
+			out.writeObject(populationToWrite);
+			out.flush();
+			out.close();
+		} catch (IOException e) {
+			LoggingUtils.getEvoLogger().error("[CS527 Peifeng] Failed to open/handle " + target
+					.getAbsolutePath() + " " + "for " + "writing: " + e.getMessage());
+		}
+	}
+
+	// UIUC CS527 Test Read Object
+	public void readPopulationFromFile(File target) {
+		if (!target.exists()) {
+			LoggingUtils.getEvoLogger().info("[CS527 Peifeng] targetFile does not exist to read");
+		} else {
+			LoggingUtils.getEvoLogger().info("[CS527 Peifeng] Starting to read population file");
+			try {
+				ObjectInputStream in = new ObjectInputStream(new FileInputStream(target));
+				Object readPopulation = in.readObject();
+
+				population = (List<T>) readPopulation;
+				/* showCoverage(population); */
+			} catch (IOException e) {
+				LoggingUtils.getEvoLogger().error("[CS527 Peifeng] IOException: Failed to open/handle " +
+						target.getAbsolutePath() + " " + "for writing: " + e.getMessage());
+			} catch (ClassNotFoundException e) {
+				LoggingUtils.getEvoLogger().error("[CS527 Peifeng] ClassNotFoundException: Failed to "
+						+ "open/handle " + target.getAbsolutePath() + " " + "for writing: " + e.getMessage());
+			}
+		}
+	}
+
+	// UIUC CS527 get coverage in the population
+	public void showCoverage(List<T> showPopulation) {
+		String output = showPopulation.stream()
+				.map(item -> String.format("%.2f%%", item.getCoverage()*100))
+				.collect(Collectors.joining(","));
+		LoggingUtils.getEvoLogger().info("[CS527 Peifeng] Coverage of the population: " + output);
+	}
 }

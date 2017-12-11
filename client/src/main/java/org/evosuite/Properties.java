@@ -676,7 +676,7 @@ public class Properties {
 
 	/** Constant <code>STOP_ZERO=true</code> */
 	@Parameter(key = "stop_zero", group = "Search Algorithm", description = "Stop optimization once goal is covered")
-	public static boolean STOP_ZERO = true;
+	public static boolean STOP_ZERO = false;
 
 	/** Constant <code>DYNAMIC_LIMIT=false</code> */
 	@Parameter(key = "dynamic_limit", group = "Search Algorithm", description = "Multiply search budget by number of test goals")
