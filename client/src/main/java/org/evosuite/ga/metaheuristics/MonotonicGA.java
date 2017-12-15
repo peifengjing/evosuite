@@ -457,8 +457,12 @@ public class MonotonicGA<T extends Chromosome> extends GeneticAlgorithm<T> {
 				ObjectInputStream in = new ObjectInputStream(new FileInputStream(target));
 				Object readPopulation = in.readObject();
 
-				population = (List<T>) readPopulation;
+				// mix random population and read population to improve performance
+				/*population = (List<T>) readPopulation;*/
 				/* showCoverage(population); */
+				generateInitialPopulation(Properties.POPULATION);
+				population.addAll((List<T>) readPopulation);
+
 			} catch (IOException e) {
 				LoggingUtils.getEvoLogger().error("[CS527 Peifeng] IOException: Failed to open/handle " +
 						target.getAbsolutePath() + " " + "for writing: " + e.getMessage());
