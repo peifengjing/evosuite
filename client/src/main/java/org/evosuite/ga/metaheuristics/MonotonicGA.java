@@ -233,15 +233,14 @@ public class MonotonicGA<T extends Chromosome> extends GeneticAlgorithm<T> {
 		File target = new File(targetFolder + targetPrefix + targetFile + targetSuffix);
 		if (!target.exists()) {
 			generateInitialPopulation(Properties.POPULATION);
-			logger.debug("Calculating fitness of initial population");
-			calculateFitnessAndSortPopulation();
 		} else {
 			readPopulationFromFile(target);
 			if (population.isEmpty()) {
 				generateInitialPopulation(Properties.POPULATION);
 			}
-			Collections.sort(population);
 		}
+		logger.debug("Calculating fitness of initial population");
+		calculateFitnessAndSortPopulation();
 
 		this.notifyIteration();
 	}
@@ -383,6 +382,15 @@ public class MonotonicGA<T extends Chromosome> extends GeneticAlgorithm<T> {
 		String targetFile = Properties.TARGET_CLASS;
 		File target = new File(targetFolder + targetPrefix + targetFile + targetSuffix);
 		writePopulationToFile(target, lastPopulation);
+		/** read population to double check write and read function
+		List<T> readPopulation = new ArrayList<>(population);
+		readPopulationFromFile(target);
+		LoggingUtils.getEvoLogger().info("list length are same? " + String.valueOf(readPopulation
+				.size() == population.size()));
+		LoggingUtils.getEvoLogger().info("list element are same class? " + String.valueOf
+				(readPopulation.get(0).getClass().equals(population.get(0).getClass())));
+		LoggingUtils.getEvoLogger().info("list element class is " + readPopulation.get(0).getClass());
+		*/
 
 		// archive
 		TimeController.execute(this::updateBestIndividualFromArchive, "update from archive", 5_000);
